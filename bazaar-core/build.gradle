@@ -9,4 +9,5 @@ dependencies {
 
 shadowJar {
     archiveFileName.set("Bazaar.jar")
+    relocate 'de.tr7zw.changeme.nbtapi', 'me.math3w.bazaar.internal.nbtapi'
 }
