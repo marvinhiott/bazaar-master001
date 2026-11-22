@@ -1,0 +1,29 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group 'me.math3w'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url = uri('https://hub.spigotmc.org/nexus/content/repositories/snapshots') }
+    maven { url = uri('https://oss.sonatype.org/content/groups/public/') }
+    maven { url = 'https://jitpack.io' }
+    maven { url = 'https://repo.codemc.org/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'org.spigotmc:spigot-api:26.3-R0.1-SNAPSHOT'
+    implementation 'com.github.ZorTik:ContainrGUI:0.7-pre2'
+    implementation 'de.tr7zw:item-nbt-api:2.16.1'
+    implementation("com.github.cryptomorin:XSeries:14.0.0")
+    compileOnly "com.github.MilkBowl:VaultAPI:1.7"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}

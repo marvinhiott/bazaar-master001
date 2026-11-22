@@ -1,0 +1,20 @@
+name: Bazaar
+main: me.math3w.bazaar.BazaarPlugin
+version: 1.0
+author: _Math3w_
+description: Recreation of hypixel skyblock bazaar system
+api-version: '26.3'
+depend:
+  - Vault
+commands:
+  bazaar:
+    description: Opens bazaar menu
+    permission: bazaar.open
+  bazaaredit:
+    description: Opens edit menu
+    permission: bazaar.edit
+permissions:
+  bazaar.open:
+    default: true
+  bazaar.edit:
+    default: op
