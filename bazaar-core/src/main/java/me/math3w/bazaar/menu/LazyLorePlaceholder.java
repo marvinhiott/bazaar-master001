@@ -7,6 +7,7 @@ import me.math3w.bazaar.utils.Utils;
 import me.zort.containr.ContainerComponent;
 import me.zort.containr.Element;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -43,7 +44,7 @@ public class LazyLorePlaceholder implements Placeholder {
     private static LoreLine getLoreLine(String line, List<String> lore) {
         for (int i = 0; i < lore.size(); i++) {
             String loreLine = lore.get(i);
-            if (!loreLine.contains(line)) continue;
+            if (!ChatColor.stripColor(loreLine).contains(line)) continue;
             return new LoreLine(loreLine, i);
         }
         return null;
@@ -75,31 +76,35 @@ public class LazyLorePlaceholder implements Placeholder {
 
         Element element = MenuUtils.getElementAtSlot(container, itemSlot);
         if (element == null) {
-            retryUpdate(value, loadingLine, attempt);
+            retryUpdate(value, loadingLine, attempt, "menu element missing at slot " + itemSlot);
             return;
         }
 
         ItemStack newItem = element.item(player);
         if (newItem == null) {
-            retryUpdate(value, loadingLine, attempt);
+            retryUpdate(value, loadingLine, attempt, "menu element has no item at slot " + itemSlot);
             return;
         }
         newItem = newItem.clone();
 
         ItemMeta itemMeta = newItem.getItemMeta();
         if (itemMeta == null || !itemMeta.hasLore()) {
-            retryUpdate(value, loadingLine, attempt);
+            retryUpdate(value, loadingLine, attempt, "menu item has no lore at slot " + itemSlot);
             return;
         }
         List<String> lore = new ArrayList<>(itemMeta.getLore());
 
-        LoreLine loreLine = getLoreLine(Utils.colorize(loadingLine), lore);
+        LoreLine loreLine = getLoreLine(ChatColor.stripColor(Utils.colorize(loadingLine)), lore);
         if (loreLine == null) {
-            retryUpdate(value, loadingLine, attempt);
+            retryUpdate(value, loadingLine, attempt, "loading lore line missing at slot " + itemSlot);
             return;
         }
 
-        lore.set(loreLine.getIndex(), loreLine.getContent().replace(loadingValue, value));
+        String loreContent = loreLine.getContent().replace(loadingValue, value);
+        if (loreContent.equals(loreLine.getContent())) {
+            loreContent = loreLine.getContent().replace(ChatColor.stripColor(loadingValue), value);
+        }
+        lore.set(loreLine.getIndex(), loreContent);
 
         itemMeta.setLore(lore);
         newItem.setItemMeta(itemMeta);
@@ -107,10 +112,10 @@ public class LazyLorePlaceholder implements Placeholder {
         MenuUtils.updateGuiItem(bazaarAPI.getMenuHistory(), container, itemSlot, player, newItem);
     }
 
-    private void retryUpdate(String value, String loadingLine, int attempt) {
+    private void retryUpdate(String value, String loadingLine, int attempt, String failureReason) {
         if (attempt >= MAX_UPDATE_ATTEMPTS) {
             Bukkit.getLogger().warning("Could not update Bazaar price placeholder for " + player.getName()
-                    + " after " + MAX_UPDATE_ATTEMPTS + " attempts.");
+                    + " after " + MAX_UPDATE_ATTEMPTS + " attempts: " + failureReason + ".");
             return;
         }
 

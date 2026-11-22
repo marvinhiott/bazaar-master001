@@ -22,20 +22,25 @@ public class MenuUtils {
     }
 
     public static Element getElementAtSlot(ContainerComponent container, int itemSlot) {
-        return getContainerElements(container).get(itemSlot);
+        Element element = getContainerElements(container).get(itemSlot);
+        if (element != null || !(container instanceof PagedContainer)) return element;
+
+        PagedContainer pagedContainer = (PagedContainer) container;
+        int pageOffset = pagedContainer.getCurrentPageIndex() * pagedContainer.getSelection().size();
+        int pageSlot = itemSlot - pageOffset;
+        if (pageSlot < 0 || pageSlot >= pagedContainer.getSelection().size()) return null;
+
+        int x = pagedContainer.getSelection().xMin() + pageSlot % pagedContainer.getSelection().xSideSize();
+        int y = pagedContainer.getSelection().yMin() + pageSlot / pagedContainer.getSelection().xSideSize();
+        return pagedContainer.content((Class<Element>) null).get(y * 9 + x);
     }
 
     public static void updateGuiItem(MenuHistory menuHistory, ContainerComponent container, int itemSlot, Player player, ItemStack newItem) {
-        for (Map.Entry<Integer, Element> slotElementEntry : getContainerElements(container).entrySet()) {
-            int slot = slotElementEntry.getKey();
-            Element element = slotElementEntry.getValue();
+        Element element = getElementAtSlot(container, itemSlot);
+        if (element == null) return;
 
-            if (slot != itemSlot) continue;
-
-            container.setElement(itemSlot, Component.element(newItem).click(element::click).build());
-            menuHistory.refreshGui(player);
-            break;
-        }
+        container.setElement(itemSlot, Component.element(newItem).click(element::click).build());
+        menuHistory.refreshGui(player);
     }
 
     private static Map<Integer, Element> getContainerElements(ContainerComponent container) {
