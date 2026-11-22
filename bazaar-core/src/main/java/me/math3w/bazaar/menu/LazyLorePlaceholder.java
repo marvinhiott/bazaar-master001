@@ -94,8 +94,13 @@ public class LazyLorePlaceholder implements Placeholder {
         }
         List<String> lore = new ArrayList<>(itemMeta.getLore());
 
-        LoreLine loreLine = getLoreLine(ChatColor.stripColor(Utils.colorize(loadingLine)), lore);
+        String normalizedLoadingLine = ChatColor.stripColor(Utils.colorize(loadingLine));
+        LoreLine loreLine = getLoreLine(normalizedLoadingLine, lore);
         if (loreLine == null) {
+            String resolvedLine = ChatColor.stripColor(
+                    Utils.colorize(loadingLine.replace(loadingValue, value)));
+            if (!resolvedLine.equals(normalizedLoadingLine) && getLoreLine(resolvedLine, lore) != null) return;
+
             retryUpdate(value, loadingLine, attempt, "loading lore line missing at slot " + itemSlot);
             return;
         }
