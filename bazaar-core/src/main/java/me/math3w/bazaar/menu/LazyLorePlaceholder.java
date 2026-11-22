@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class LazyLorePlaceholder implements Placeholder {
+    private static final int MAX_UPDATE_ATTEMPTS = 20;
+
     private final BazaarAPI bazaarAPI;
     private final ContainerComponent container;
     private final ItemStack item;
@@ -59,32 +61,61 @@ public class LazyLorePlaceholder implements Placeholder {
             Instant doneInstant = Instant.now();
             long waitTicks = Math.max(3 - (Duration.between(startInstant, doneInstant).toMillis() / 50), 0);
 
-            Bukkit.getScheduler().runTaskLater(bazaarAPI.getPlugin(), () -> {
-                Element element = MenuUtils.getElementAtSlot(container, itemSlot);
-                if (element == null) return;
-
-                ItemStack newItem = element.item(player).clone();
-                ItemMeta itemMeta = newItem.getItemMeta();
-
-                if (itemMeta == null || !itemMeta.hasLore()) return;
-                List<String> lore = new ArrayList<>(itemMeta.getLore());
-
-                LoreLine loreLine = getLoreLine(Utils.colorize(loadingLine), lore);
-                if (loreLine == null) return;
-
-                lore.set(loreLine.getIndex(), loreLine.getContent().replaceAll(loadingValue, value));
-
-                itemMeta.setLore(lore);
-                newItem.setItemMeta(itemMeta);
-
-                MenuUtils.updateGuiItem(bazaarAPI.getMenuHistory(), container, itemSlot, player, newItem);
-            }, waitTicks);
+            Bukkit.getScheduler().runTaskLater(bazaarAPI.getPlugin(), () -> updateLore(value, loadingLine, 0), waitTicks);
         }).exceptionally(throwable -> {
             throwable.printStackTrace();
             return null;
         });
 
         return loadingLine;
+    }
+
+    private void updateLore(String value, String loadingLine, int attempt) {
+        if (!player.isOnline()) return;
+
+        Element element = MenuUtils.getElementAtSlot(container, itemSlot);
+        if (element == null) {
+            retryUpdate(value, loadingLine, attempt);
+            return;
+        }
+
+        ItemStack newItem = element.item(player);
+        if (newItem == null) {
+            retryUpdate(value, loadingLine, attempt);
+            return;
+        }
+        newItem = newItem.clone();
+
+        ItemMeta itemMeta = newItem.getItemMeta();
+        if (itemMeta == null || !itemMeta.hasLore()) {
+            retryUpdate(value, loadingLine, attempt);
+            return;
+        }
+        List<String> lore = new ArrayList<>(itemMeta.getLore());
+
+        LoreLine loreLine = getLoreLine(Utils.colorize(loadingLine), lore);
+        if (loreLine == null) {
+            retryUpdate(value, loadingLine, attempt);
+            return;
+        }
+
+        lore.set(loreLine.getIndex(), loreLine.getContent().replace(loadingValue, value));
+
+        itemMeta.setLore(lore);
+        newItem.setItemMeta(itemMeta);
+
+        MenuUtils.updateGuiItem(bazaarAPI.getMenuHistory(), container, itemSlot, player, newItem);
+    }
+
+    private void retryUpdate(String value, String loadingLine, int attempt) {
+        if (attempt >= MAX_UPDATE_ATTEMPTS) {
+            Bukkit.getLogger().warning("Could not update Bazaar price placeholder for " + player.getName()
+                    + " after " + MAX_UPDATE_ATTEMPTS + " attempts.");
+            return;
+        }
+
+        Bukkit.getScheduler().runTaskLater(bazaarAPI.getPlugin(),
+                () -> updateLore(value, loadingLine, attempt + 1), 1);
     }
 
     private static class LoreLine {
